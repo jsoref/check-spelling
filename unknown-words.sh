@@ -316,7 +316,7 @@ spelling_body() {
     OUTPUT="$OUTPUT
 $1
 
-<details><summary>To accept these changes, run the following commands</summary>
+<details><summary>To accept these changes, run the following commands from the root of this repository on this branch</summary>
 "$(relative_note)"
 
 "'```'"
