@@ -5,6 +5,7 @@ generate_instructions() {
   patch_remove=$(echo "$diff_output" | perl -ne 'next unless s/^-([^-])/$1/; s/\n/ /; print')
   patch_add=$(echo "$diff_output" | perl -ne 'next unless s/^\+([^+])/$1/; s/\n/ /; print')
   instructions=$(mktemp)
+  echo 'cd $(git rev-parse --show-toplevel)' >> $instructions
   to_retrieve_expect >> $instructions
   if [ -n "$patch_remove" ]; then
     if [ -z "$expect_files" ]; then
