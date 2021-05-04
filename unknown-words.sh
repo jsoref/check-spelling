@@ -8,10 +8,6 @@ export spellchecker=${spellchecker:-/app}
 . "$spellchecker/common.sh"
 
 main() {
-  GITHUB_TOKEN=${GITHUB_TOKEN:-$INPUT_GITHUB_TOKEN}
-  if [ -z "$GITHUB_EVENT_PATH" ] || [ ! -e "$GITHUB_EVENT_PATH" ]; then
-    GITHUB_EVENT_PATH=/dev/null
-  fi
   case "$GITHUB_EVENT_NAME" in
     schedule)
       exec "$spellchecker/check-pull-requests.sh"
@@ -181,12 +177,12 @@ handle_comment() {
     exit 0
   fi
 
-  trigger_comment_url=$(jq -r .url $comment)
+  trigger_comment_url=$(jq -r '.url // empty' $comment)
   sender_login=$(jq -r .sender.login "$GITHUB_EVENT_PATH")
   issue_user_login=$(jq -r .issue.user.login "$GITHUB_EVENT_PATH")
   issue=$(mktemp_json)
   jq -r .issue "$GITHUB_EVENT_PATH" > $issue
-  pull_request_url=$(jq -r .pull_request.url $issue)
+  pull_request_url=$(jq -r '.pull_request.url // empty' $issue)
   pull_request_info=$(mktemp_json)
   pull_request "$pull_request_url" | jq .head > $pull_request_info
   pull_request_sha=$(jq -r .sha $pull_request_info)
@@ -209,7 +205,7 @@ handle_comment() {
   fi
   number=$(jq -r .number $issue)
   created_at=$(jq -r .created_at $comment)
-  issue_url=$(jq -r .url $issue)
+  issue_url=$(jq -r '.url // empty' $issue)
   pull_request_ref=$(jq -r .ref $pull_request_info)
   pull_request_repo=$(jq -r .repo.clone_url $pull_request_info)
   git remote add request $pull_request_repo
@@ -305,6 +301,18 @@ handle_comment() {
 }
 
 define_variables() {
+  if [ -n "$DEBUG" ]; then
+    echo 'env:'
+    env|sort
+  fi
+  GITHUB_TOKEN=${GITHUB_TOKEN:-$INPUT_GITHUB_TOKEN}
+  if [ -z "$GITHUB_EVENT_PATH" ] || [ ! -s "$GITHUB_EVENT_PATH" ]; then
+    GITHUB_EVENT_PATH=/dev/null
+  fi
+  if [ -n "$DEBUG" ]; then
+    echo 'GITHUB_EVENT_PATH:'
+    cat $GITHUB_EVENT_PATH
+  fi
   bucket=${INPUT_BUCKET:-$bucket}
   project=${INPUT_PROJECT:-$project}
   if [ -z "$bucket" ] && [ -z "$project" ] && [ -n "$INPUT_CONFIG" ]; then
@@ -800,6 +808,11 @@ $header"
     if [ -e "$fewer_misspellings_canary" ]; then
       cleanup_text=" (and remove the previously acknowledged and now absent words)"
     fi
+    if [ "$GITHUB_EVENT_NAME" = "pull_request_target" ] || [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+      if [ -z "$GITHUB_HEAD_REF" ]; then
+        GITHUB_HEAD_REF=$(jq -r .pull_request.head.ref $GITHUB_EVENT_PATH)
+      fi
+    fi
     if [ -n "$GITHUB_HEAD_REF" ]; then
       remote_url_ssh=$(jq -r .pull_request.head.repo.ssh_url $GITHUB_EVENT_PATH)
       remote_url_https=$(jq -r .pull_request.head.repo.clone_url $GITHUB_EVENT_PATH)
@@ -976,12 +989,17 @@ post_commit_comment() {
         if [ -n "$DEBUG" ]; then
           cat $response
         fi
-        COMMENT_URL=$(jq -r .url $response)
-        perl -p -i.orig -e 's<COMMENT_URL><'"$COMMENT_URL"'>' $BODY
-        if diff -q "$BODY.orig" "$BODY" > /dev/null; then
+        COMMENT_URL=$(jq -r '.url // empty' $response)
+        if [ -z "$COMMENT_URL" ]; then
+          touch $BODY
           no_patch=1
+        else
+          perl -p -i.orig -e 's<COMMENT_URL><'"$COMMENT_URL"'>' $BODY
+          if diff -q "$BODY.orig" "$BODY" > /dev/null; then
+            no_patch=1
+          fi
+          rm "$BODY.orig"
         fi
-        rm "$BODY.orig"
         if offer_quote_reply; then
           (
             echo
@@ -997,7 +1015,7 @@ post_commit_comment() {
             cat $response
           fi
         fi
-        rm -f $BODY
+        rm -f $BODY 2>/dev/null
       else
         echo "$OUTPUT"
       fi
