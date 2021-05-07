@@ -46,6 +46,13 @@ inputs:
     description: 'Post comment with report'
     required: false
     default: '1'
+  event_aliases:
+    description: >-
+      Try to treat a GitHub event "a" as GitHub event "b" (JSON map).
+      If this flag was available before this tool recognized `pull_request_target`,
+      `{"pull_request_target":"pull_request"}` would have mapped it to `pull_request`.
+    required: false
+    default: ''
   capture_output_unknown_words:
     description: 'Capture unknown words (should be added to expect.txt) as an output'
     required: false
@@ -95,6 +102,7 @@ runs:
     - id: spelling
       env:
         INPUT_GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}
+        INPUT_EVENT_ALIASES: "${{ inputs.event_aliases }}"
         INPUT_BUCKET: ${{ inputs.bucket }}
         INPUT_PROJECT: ${{ inputs.project }}
         INPUT_CONFIG: ${{ inputs.config }}
