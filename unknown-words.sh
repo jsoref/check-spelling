@@ -335,6 +335,7 @@ define_variables() {
   run_output="$temp/unknown.words.txt"
   run_files="$temp/reporter-input.txt"
   tokens_file="$temp/tokens.txt"
+  output_variables=$(mktemp)
 }
 
 sort_unique() {
@@ -667,8 +668,14 @@ run_spell_check() {
   expect="$expect_path" warning_output="$warning_output" more_warnings="$more_warnings" should_exclude_file="$should_exclude_file" "$word_collator" |\
   perl -p -n -e 's/ \(.*//' > "$run_output"
   word_splitter_status="${PIPESTATUS[2]} ${PIPESTATUS[3]}"
-  cat "$warning_output" "$more_warnings"
-  rm "$warning_output" "$more_warnings"
+  cat "$more_warnings" >> "$warning_output"
+  rm "$more_warnings"
+  cat "$warning_output"
+  if [ -n "$INPUT_CAPTURE_WARNINGS" ]; then
+    echo "::set-output name=warnings::$warning_output" >> $output_variables
+  else
+    rm "$warning_output"
+  fi
   end_group
   if [ "$word_splitter_status" != '0 0' ]; then
     echo "$word_splitter failed ($word_splitter_status)"
@@ -739,7 +746,7 @@ remove_items() {
     if [ -n "$INPUT_CAPTURE_STALE_WORDS" ]; then
       remove_words=$(mktemp)
       echo "$patch_remove" > $remove_words
-      echo "::set-output name=stale_words::$remove_words"
+      echo "::set-output name=stale_words::$remove_words" >> $output_variables
     fi
   else
     rm "$fewer_misspellings_canary"
@@ -808,7 +815,7 @@ $header"
 "
     if [ -s "$should_exclude_file" ]; then
       if [ -n "$INPUT_CAPTURE_SKIPPED_FILES" ]; then
-        echo "::set-output name=skipped_files::$should_exclude_file"
+        echo "::set-output name=skipped_files::$should_exclude_file" >> $output_variables
       fi
       OUTPUT="$OUTPUT
 <details><summary>Some files were automatically ignored</summary>
@@ -860,7 +867,7 @@ bullet_words_and_warn() {
   if [ -n "$INPUT_CAPTURE_UNKNOWN_WORDS" ]; then
     file_with_unknown_words=$(mktemp)
     cp "$tokens_file" $file_with_unknown_words
-    echo "::set-output name=unknown_words::$file_with_unknown_words"
+    echo "::set-output name=unknown_words::$file_with_unknown_words" >> $output_variables
   fi
   perl -pne 's/^(.)/* $1/' "$tokens_file"
   remove_items
@@ -869,6 +876,7 @@ bullet_words_and_warn() {
 
 quit() {
   echo "::remove-matcher owner=check-spelling::"
+  cat $output_variables
   if [ -n "$junit" ]; then
     exit
   fi
