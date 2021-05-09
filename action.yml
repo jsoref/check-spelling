@@ -25,7 +25,7 @@ inputs:
     required: false
   dictionary_url:
     description: "Location of dictionary (if you aren't providing one in your repository)"
-    default: 'https://raw.githubusercontent.com/check-spelling/check-spelling/dictionary-\$DICTIONARY_VERSION/dict.txt'
+    default: 'https://raw.githubusercontent.com/check-spelling/check-spelling/dictionary-$DICTIONARY_VERSION/dict.txt'
     required: false
   dictionary_version:
     description: 'Version of the dictionary (only used if the url includes $DICTIONARY_VERSION)'
@@ -86,24 +86,25 @@ runs:
   using: 'composite'
   steps:
     - id: spelling
-      run: >
-        INPUT_GITHUB_TOKEN="${{ inputs.GITHUB_TOKEN }}"
-        INPUT_BUCKET="${{ inputs.bucket }}"
-        INPUT_PROJECT="${{ inputs.project }}"
-        INPUT_CONFIG="${{ inputs.config }}"
-        INPUT_PATH="${{ inputs.experimental_path }}"
-        INPUT_DICTIONARY_VERSION="${{ inputs.dictionary_version }}"
-        INPUT_DICTIONARY_URL="${{ inputs.dictionary_url }}"
-        INPUT_EXPERIMENTAL_APPLY_CHANGES_VIA_BOT="${{ inputs.experimental_apply_changes_via_bot }}"
-        INPUT_EXPERIMENTAL_PARALLEL_JOBS="${{ inputs.experimental_parallel_jobs }}"
-        INPUT_EXPERIMENTAL_COMMIT_NOTE="${{ inputs.experimental_commit_note }}"
-        INPUT_POST_COMMENT="${{ inputs.post_comment }}"
-        INPUT_CAPTURE_UNKNOWN_WORDS="${{ inputs.capture_output_unknown_words }}"
-        INPUT_CAPTURE_STALE_WORDS="${{ inputs.capture_output_stale_words }}"
-        INPUT_CAPTURE_SKIPPED_FILES="${{ inputs.capture_output_skipped_files }}"
-        INPUT_LONGEST_WORD="${{ inputs.longest_word }}"
-        INPUT_SHORTEST_WORD="${{ inputs.shortest_word }}"
-        DEBUG="${{ inputs.debug }}"
-        spellchecker=$GITHUB_ACTION_PATH
+      env:
+        INPUT_GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}
+        INPUT_BUCKET: ${{ inputs.bucket }}
+        INPUT_PROJECT: ${{ inputs.project }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_PATH: ${{ inputs.experimental_path }}
+        INPUT_DICTIONARY_VERSION: ${{ inputs.dictionary_version }}
+        INPUT_DICTIONARY_URL: ${{ inputs.dictionary_url }}
+        INPUT_EXPERIMENTAL_APPLY_CHANGES_VIA_BOT: ${{ inputs.experimental_apply_changes_via_bot }}
+        INPUT_EXPERIMENTAL_PARALLEL_JOBS: ${{ inputs.experimental_parallel_jobs }}
+        INPUT_EXPERIMENTAL_COMMIT_NOTE: ${{ inputs.experimental_commit_note }}
+        INPUT_POST_COMMENT: ${{ inputs.post_comment }}
+        INPUT_CAPTURE_UNKNOWN_WORDS: ${{ inputs.capture_output_unknown_words }}
+        INPUT_CAPTURE_STALE_WORDS: ${{ inputs.capture_output_stale_words }}
+        INPUT_CAPTURE_SKIPPED_FILES: ${{ inputs.capture_output_skipped_files }}
+        INPUT_LONGEST_WORD: ${{ inputs.longest_word }}
+        INPUT_SHORTEST_WORD: ${{ inputs.shortest_word }}
+        DEBUG: ${{ inputs.debug }}
+        spellchecker: ${{ github.action_path }}
+      run:
         $GITHUB_ACTION_PATH/unknown-words.sh
       shell: bash
