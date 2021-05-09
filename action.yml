@@ -46,6 +46,14 @@ inputs:
     description: 'Post comment with report'
     required: false
     default: '1'
+  dictionary_source_prefixes:
+    description: 'JSON map of prefixes for dictionary urls'
+    required: false
+    default: '{"cspell": "https://raw.githubusercontent.com/check-spelling/cspell-dicts/HEAD/dictionaries/"}'
+  extra_dictionaries:
+    description: 'Space delimited list of URLs (or `prefix:`+path) to additional word lists'
+    required: false
+    default: ''
   event_aliases:
     description: >-
       Try to treat a GitHub event "a" as GitHub event "b" (JSON map).
@@ -103,6 +111,8 @@ runs:
       env:
         INPUT_GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}
         INPUT_EVENT_ALIASES: "${{ inputs.event_aliases }}"
+        INPUT_DICTIONARY_ALIASES: "${{ inputs.dictionary_source_prefixes }}"
+        INPUT_EXTRA_DICTIONARIES: "${{ inputs.extra_dictionaries }}"
         INPUT_BUCKET: ${{ inputs.bucket }}
         INPUT_PROJECT: ${{ inputs.project }}
         INPUT_CONFIG: ${{ inputs.config }}

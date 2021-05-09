@@ -589,6 +589,35 @@ set_up_jq() {
   fi
 }
 
+words_to_lines() {
+  cat | tr " " "\n"
+}
+
+build_dictionary_alias_pattern() {
+  if [ -z "$dictionary_alias_pattern" ]; then
+    dictionary_alias_pattern="$(
+      echo "$INPUT_DICTIONARY_ALIASES" |
+      jq -r 'to_entries | map( {("s{^" +.key + ":}{" + .value +"};"): 1 } ) | .[] | keys[]' |xargs echo
+    )"
+  fi
+}
+
+get_extra_dictionaries() {
+  extra_dictionaries="$(echo "$1" | words_to_lines)"
+  if [ -n "$extra_dictionaries" ]; then
+    extra_dictionaries="$(
+      echo "$extra_dictionaries" |
+      perl -pne "$dictionary_alias_pattern; s<(^https://(?:raw\.githubusercontent\.com)/)><-H 'Authorization: token $GITHUB_TOKEN' \$1>; s{^}{-O }"
+    )"
+  fi
+  extra_dictionaries_dir=$(mktemp -d)
+  (
+    cd $extra_dictionaries_dir
+    echo "$extra_dictionaries" | xargs curl -q -s
+  )
+  echo "$extra_dictionaries_dir"
+}
+
 set_up_files() {
   mkdir -p .git
   cp $spellchecker/reporter.json .git/
@@ -615,6 +644,18 @@ set_up_files() {
     DICTIONARY_VERSION=${DICTIONARY_VERSION:-$INPUT_DICTIONARY_VERSION}
     DICTIONARY_URL=${DICTIONARY_URL:-$INPUT_DICTIONARY_URL}
     eval download_or_quit_with_error "$DICTIONARY_URL" "$dict"
+  fi
+  if [ -n "$INPUT_EXTRA_DICTIONARIES" ]; then
+    build_dictionary_alias_pattern
+    extra_dictionaries_dir=$(get_extra_dictionaries "$INPUT_EXTRA_DICTIONARIES")
+    if [ -n "$extra_dictionaries_dir" ]; then
+      (
+        cd "$extra_dictionaries_dir"
+        # Items that aren't proper should be moved to patterns instead
+        perl -ne "next unless /^[A-Za-z$q]+$/; print" * | sort -u >> "$dict"
+      )
+      rm -rf "$extra_dictionaries_dir"
+    fi
   fi
   get_project_files allow $allow_path
   if [ -s "$allow_path" ]; then
