@@ -54,6 +54,37 @@ inputs:
     description: 'Space delimited list of URLs (or `prefix:`+path) to additional word lists'
     required: false
     default: ''
+  check_extra_dictionaries:
+    description: 'Compare unknown tokens against these dictionaries and suggest if applicable'
+    required: false
+    default:
+      cspell:ada/ada.txt
+      cspell:aws/aws.txt
+      cspell:bash/bash-words.txt
+      cspell:companies/companies.txt
+      cspell:cpp/cpp.txt
+      cspell:csharp/csharp.txt
+      cspell:css/css.txt
+      cspell:django/django.txt
+      cspell:dotnet/dotnet.txt
+      cspell:elixir/elixir.txt
+      cspell:en_GB/src/wordsEnGb.txt
+      cspell:filetypes/filetypes.txt
+      cspell:fonts/fonts.txt
+      cspell:fullstack/fullstack.txt
+      cspell:golang/go.txt
+      cspell:haskell/haskell.txt
+      cspell:html/html.txt
+      cspell:java/java.txt
+      cspell:latex/latex.txt
+      cspell:lua/lua.txt
+      cspell:node/node.txt
+      cspell:npm/npm.txt
+      cspell:php/php.txt
+      cspell:python/python.txt
+      cspell:ruby/ruby.txt
+      cspell:rust/rust.txt
+      cspell:scala/scala.txt
   event_aliases:
     description: >-
       Try to treat a GitHub event "a" as GitHub event "b" (JSON map).
@@ -75,6 +106,10 @@ inputs:
     default: ''
   capture_output_warnings:
     description: 'Capture warnings as an output'
+    required: false
+    default: ''
+  capture_output_suggested_dictionaries:
+    description: 'Capture suggested dictionaries'
     required: false
     default: ''
   shortest_word:
@@ -100,6 +135,9 @@ outputs:
   skipped_files:
     description: "Skipped files (could be added to excludes.txt)"
     value: ${{ steps.spelling.outputs.skipped_files }}
+  suggested_dictionaries:
+    description: "Suggested dictionaries (could be added to extra_dictionaries)"
+    value: ${{ steps.spelling.outputs.suggested_dictionaries }}
   warnings:
     description: "Warnings"
     value: ${{ steps.spelling.outputs.warnings }}
@@ -113,6 +151,7 @@ runs:
         INPUT_EVENT_ALIASES: "${{ inputs.event_aliases }}"
         INPUT_DICTIONARY_ALIASES: "${{ inputs.dictionary_source_prefixes }}"
         INPUT_EXTRA_DICTIONARIES: "${{ inputs.extra_dictionaries }}"
+        INPUT_CHECK_EXTRA_DICTIONARIES: "${{ inputs.check_extra_dictionaries }}"
         INPUT_BUCKET: ${{ inputs.bucket }}
         INPUT_PROJECT: ${{ inputs.project }}
         INPUT_CONFIG: ${{ inputs.config }}
@@ -126,6 +165,7 @@ runs:
         INPUT_CAPTURE_UNKNOWN_WORDS: ${{ inputs.capture_output_unknown_words }}
         INPUT_CAPTURE_STALE_WORDS: ${{ inputs.capture_output_stale_words }}
         INPUT_CAPTURE_SKIPPED_FILES: ${{ inputs.capture_output_skipped_files }}
+        INPUT_CAPTURE_SUGGESTED_DICTIONARIES: ${{ inputs.capture_output_suggested_dictionaries }}
         INPUT_CAPTURE_WARNINGS: ${{ inputs.capture_output_warnings }}
         INPUT_LONGEST_WORD: ${{ inputs.longest_word }}
         INPUT_SHORTEST_WORD: ${{ inputs.shortest_word }}

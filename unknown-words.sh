@@ -657,6 +657,19 @@ set_up_files() {
       rm -rf "$extra_dictionaries_dir"
     fi
   fi
+  if [ -n "$INPUT_CHECK_EXTRA_DICTIONARIES" ]; then
+    build_dictionary_alias_pattern
+    check_extra_dictionaries="$(
+      echo "$INPUT_EXTRA_DICTIONARIES $INPUT_EXTRA_DICTIONARIES $INPUT_CHECK_EXTRA_DICTIONARIES" |
+      words_to_lines |
+      sort |
+      uniq -u
+    )"
+    if [ -n "$check_extra_dictionaries" ]; then
+      export check_extra_dictionaries_dir=$(get_extra_dictionaries "$check_extra_dictionaries")
+      extra_dictionaries_cover_entries=$(mktemp)
+    fi
+  fi
   get_project_files allow $allow_path
   if [ -s "$allow_path" ]; then
     cat "$allow_path" >> "$dict"
@@ -898,6 +911,30 @@ $header"
     OUTPUT="$header$1
 
 "
+    if [ -s "$extra_dictionaries_cover_entries" ]; then
+      OUTPUT="$OUTPUT
+<details><summary>Available dictionaries could cover words not in the dictionary</summary>
+
+$(cat "$extra_dictionaries_cover_entries")
+
+Consider adding them using:
+$B
+      with:
+        extra_dictionaries:
+$(
+  cat "$extra_dictionaries_cover_entries" |
+  perl -pne 's/\s.*//;s/^/          /;s{\[(.*)\]\(.*}{$1}'
+)
+$B
+To stop checking additional dictionaries, add:
+$B
+      with:
+        check_extra_dictionaries: ''
+$B
+
+</details>
+"
+    fi
     if [ -s "$should_exclude_file" ]; then
       if [ -n "$INPUT_CAPTURE_SKIPPED_FILES" ]; then
         echo "::set-output name=skipped_files::$should_exclude_file" >> $output_variables
@@ -1276,6 +1313,42 @@ fewer_misspellings() {
   quit
 }
 more_misspellings() {
+  if [ -n "$check_extra_dictionaries_dir" ]; then
+    begin_group 'Check for extra dictionaries'
+    (
+      cd "$check_extra_dictionaries_dir"
+      for dictionary in $(find . -type f | perl -pne 's{^\./}{}'); do
+        splitter_dir=$("$word_splitter" $dictionary)
+        if [ -s "$splitter_dir/unknown" ]; then
+          grep . "$splitter_dir/unknown" > $dictionary
+          covered_lines=$(
+            sort $dictionary $run_output |
+            uniq -d |
+            wc -l |
+            strip_lead
+          )
+          if [ $covered_lines -gt 0 ]; then
+            dictionary_name=$(
+              echo "$check_extra_dictionaries" |
+              grep "[:/]$dictionary$"
+            )
+            dictionary_url=$(echo "$dictionary_name" | perl -pne "$dictionary_alias_pattern")
+            echo "$covered_lines [$dictionary_name]($dictionary_url) ($(cat $dictionary | wc -l|strip_lead)) covers $covered_lines of them"
+          fi
+        fi
+      done |
+      sort -nr |
+      perl -pne 's/^\d+ //' > "$extra_dictionaries_cover_entries"
+    )
+    if [ -s "$extra_dictionaries_cover_entries" ] &&
+       [ -n "$INPUT_CAPTURE_SUGGESTED_DICTIONARIES" ]; then
+      extra_dictionaries_output=$(mktemp)
+      perl -pne 's/^.*?\[(\S+)\]\([^)]*\) \((\d+)\).* covers (\d+).*/{"$1":[$3, $2]}/' < "$extra_dictionaries_cover_entries" |
+      jq -s '.' > $extra_dictionaries_output
+      echo "::set-output name=suggested_dictionaries::$extra_dictionaries_output" >> $output_variables
+    fi
+    end_group
+  fi
   begin_group 'Unrecognized'
   title='Unrecognized words, please review'
   instructions=$(
