@@ -23,6 +23,30 @@ main() {
       exit 1
       ;;
     push)
+      if [ -n "$INPUT_SUPPRESS_PUSH_FOR_OPEN_PULL_REQUEST" ]; then
+        pull_request_json=$(mktemp_json)
+        curl -s \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/pulls?head=${GITHUB_REPOSITORY%/*}:$GITHUB_REF" > $pull_request_json
+        if [ $(jq length $pull_request_json) -gt 0 ]; then
+          (
+            echo "Found open PR #$(jq -r '.[0].number' $pull_request_json) - check-spelling should run there."
+            echo "Canceling workflow."
+            curl -s \
+              -X POST \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel" > /dev/null
+            # https://docs.github.com/en/actions/managing-workflow-runs/canceling-a-workflow#steps-github-takes-to-cancel-a-workflow-run
+            for count in $(seq 5); do
+              sleep 1;
+              echo -n .
+            done
+            echo "Oops. Workflow is still alive."
+          ) >&2
+          exit 1
+        fi
+      fi
       ;;
     pull_request|pull_request_target)
       ;;
