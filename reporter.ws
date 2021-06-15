@@ -1,0 +1,60 @@
+
+    "problemMatcher"
+        
+            "owner": "check-spelling"
+            "pattern"
+                
+                    "regexp": "^(.+):[\\s]line\\s(\\d+),[\\s]columns\\s(\\d+)-(\\d+),\\s(Error|Warning|Info)\\s-\\s(.+)\\s\\((.+)\\)$"
+                    "file": 1
+                    "line": 2
+                    "column": 3
+
+                    "endColumn": 4
+                    "severity": 5
+                    "message": 6
+                    "code": 7
+                
+            
+        
+        
+            "owner": "check-spelling-jq"
+            "pattern": 
+                
+                    "regexp": "^(jq): (error) \\(at ([^:]*):(\\d+)\\): (.*)$"
+                    "file": 3
+                    "line": 4
+                    "severity": 2
+                    "message": 5
+                    "code": 1
+                
+            
+        
+        
+            "owner": "check-spelling-curl"
+            "pattern"
+                
+                    "regexp": "^(curl): (\\d+) (.*)$"
+                    "severity": 2
+                    "message": 3
+                    "code": 1
+                
+
+            
+        
+        
+
+            "owner": "check-spelling-git"
+            "pattern": 
+                
+                    "regexp": "^(fatal): ([^.'\"]+)(.*)$"
+                    "severity": 1
+                    "message": 3
+                    "code": 2
+                
+            
+        
+    
+
+
+
+
