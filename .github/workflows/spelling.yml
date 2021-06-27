@@ -15,7 +15,6 @@ jobs:
     permissions:
       contents: read
       issues: write
-      metadata: write
       pull-requests: read
     runs-on: ubuntu-latest
     if: "contains(github.event_name, 'pull_request') || github.event_name == 'push'"
@@ -38,7 +37,6 @@ jobs:
     name: Update PR
     permissions:
       contents: write
-      metadata: write
       pull-requests: write
     runs-on: ubuntu-latest
     if: ${{
