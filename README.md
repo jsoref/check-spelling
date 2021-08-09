@@ -8,6 +8,8 @@ Everyone makes typos. This includes people writing documentation and comments,
 but it also includes programmers naming variables, functions, apis, classes,
 and filenames.
 
+typoooox
+
 Often, programmers will use `InitialCapitalization`, `camelCase`,
 `ALL_CAPS`, or `IDLCase` when naming their things. When they do this, it makes
 it much harder for naive spelling tools to recognize misspellings, and as such,
