@@ -1347,7 +1347,7 @@ post_commit_comment() {
         echo "$OUTPUT" > "$BODY"
         body_to_payload "$BODY"
         payload_size=$(file_size "$PAYLOAD")
-        github_comment_size_limit=65000
+        github_comment_size_limit=64
         minimize_comment_body
         response=$(mktemp_json)
 
