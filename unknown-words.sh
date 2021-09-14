@@ -218,6 +218,7 @@ offer_quote_reply() {
 }
 
 repo_is_private() {
+  set -x
   private=$(jq -r 'if .repository.private != null then .repository.private else "" end' "$GITHUB_EVENT_PATH")
   [ "$private" != "false" ]
 }
@@ -1297,6 +1298,14 @@ file_size() {
 trim_commit_comment() {
   stripped=$(mktemp)
   (perl -p -i.raw -e '$/=undef; s{'"$2"'}{$1 '"$3"'_truncated please see the log or artifact if available_\n}s; print STDERR "$2\n"' "$BODY") 2> "$stripped"
+  (
+   echo "trim_commit_comment:..."
+   echo "--input:"
+   cat "$BODY"
+   echo "--stripped:"
+   cat "$stripped"
+   echo "__stripped"
+  )>&2
   body_to_payload "$BODY"
   previous_payload_size="$payload_size"
   payload_size=$(file_size "$PAYLOAD")
@@ -1313,6 +1322,7 @@ trim_commit_comment() {
 
 minimize_comment_body() {
   if [ $payload_size -gt $github_comment_size_limit ]; then
+    set -x
     trim_commit_comment 'Script' '(<details><summary>)To accept these unrecognized.*?</summary>().*?(?=</details>\n)' 'Script unavailable</summary>\n\n'
     if [ $payload_size -gt $github_comment_size_limit ]; then
       trim_commit_comment 'Stale words' '(<details><summary>Previously acknowledged words that are now absent.*?</summary>)(.*?)(?=</details>)' '\n\n'
