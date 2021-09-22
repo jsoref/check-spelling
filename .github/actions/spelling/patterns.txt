@@ -9,3 +9,5 @@ catching 'templatesz'
 -Ilib\b
 # dig flags
  \+no
+# META.json
+"author"  : ".*"
