@@ -89,8 +89,8 @@ sub get_val_from_env {
 }
 
 sub init {
+  my ($dirname) = @_;
   our ($word_match, %unique);
-  my $dirname = dirname(abs_path(__FILE__)).'/../..';
   our $patterns_re = file_to_re "$dirname/patterns.txt";
   our $forbidden_re = file_to_re "$dirname/forbidden.txt";
 
@@ -193,7 +193,11 @@ sub split_file {
 
 sub main {
   my @ARGV = @_;
-  init();
+  our %dictionary;
+  unless (%dictionary) {
+    my $dirname = dirname(abs_path(__FILE__)).'/../..';
+    init($dirname);
+  }
 
   # read all input
   my @reports;

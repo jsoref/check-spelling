@@ -1,4 +1,4 @@
-#!/usr/bin/perl -wT -Ilib
+#!/usr/bin/perl -wT
 
 use warnings;
 use CheckSpelling::SpellingCollator;

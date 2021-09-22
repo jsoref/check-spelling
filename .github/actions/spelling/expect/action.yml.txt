@@ -1,4 +1,8 @@
+cpanm
+cpanminus
 cspell
 dicts
 github
 jsoref
+notest
+sudo

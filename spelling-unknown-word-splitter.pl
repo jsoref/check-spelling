@@ -1,10 +1,12 @@
-#!/usr/bin/perl -wT -Ilib
+#!/usr/bin/perl -wT
 
 use 5.022;
 use feature 'unicode_strings';
 use strict;
 use warnings;
 use Encode qw/decode_utf8 FB_DEFAULT/;
+use Cwd 'abs_path';
+use File::Basename;
 use CheckSpelling::UnknownWordSplitter;
 
 binmode STDIN;
@@ -19,4 +21,6 @@ if (scalar @ARGV) {
   }
 }
 
+my $dirname = dirname(abs_path(__FILE__));
+CheckSpelling::UnknownWordSplitter::init($dirname);
 CheckSpelling::UnknownWordSplitter::main(@ARGV);
