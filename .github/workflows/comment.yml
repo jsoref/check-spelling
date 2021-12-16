@@ -1,0 +1,60 @@
+name: Spell checking
+on:
+  workflow_call:
+    inputs:
+      artifact_name:
+        description: "Name for comment artifact"
+        required: false
+        type: string
+      debug:
+        description: 'Debug'
+        required: false
+        type: boolean
+      experimental_apply_changes_via_bot:
+        description: '(Experimental) Allow users to quote-reply to the bot comment to update the PR'
+        required: false
+        type: boolean
+      experimental_path:
+        description: 'Directory root to check for spelling (note that bucket/project/config are independent of this)'
+        required: false
+        type: string
+        default: '.'
+      report_title_suffix:
+        description: 'Suffix for report title (useful if you are using a matrix strategy or are using experimental_path)'
+        required: false
+        type: string
+
+jobs:
+  comment:
+    name: Comment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    - name: set up
+      run: |
+        mkdir /tmp/data
+    - name: artifact-name
+      id: artifact-name
+      shell: bash
+      env:
+        input_artifact: ${{ inputs.artifact_name }}
+        calculated_artifiact: "check-spelling-comment-${{ github.run_id }}"
+      run: echo "::set-output name=name::${input_artifact:-$calculated_artifiact}"
+    - name: retrieve-comment
+      uses: actions/download-artifact@v2
+      with:
+        name: ${{ steps.artifact-name.outputs.name }}
+        path: /tmp/data
+    - name: comment
+      uses: check-spelling/check-spelling@prerelease
+      with:
+        custom_task: comment
+        debug: ${{ inputs.debug }}
+        experimental_apply_changes_via_bot: ${{ inputs.experimental_apply_changes_via_bot }}
+        experimental_path: ${{ inputs.experimental_path }}
+        internal_state_directory: /tmp/data
+        report_title_suffix: ${{ inputs.report_title_suffix }}

@@ -1,0 +1,186 @@
+name: Spell checking
+on:
+  workflow_call:
+    secrets:
+      access-token:
+        description: "Alternative GITHUB_TOKEN to use instead of secrets.GITHUB_TOKEN"
+        required: false
+    inputs:
+      anonymize_secpoll_source:
+        description: 'Perform secpoll queries via a public dns server'
+        required: false
+        type: boolean
+      artifact_name:
+        description: "Name for comment artifact"
+        required: false
+        type: string
+      check_extra_dictionaries:
+        description: 'Compare unknown tokens against these dictionaries and suggest if applicable'
+        required: false
+        type: string
+        default:
+          cspell:ada/ada.txt
+          cspell:aws/aws.txt
+          cspell:bash/bash-words.txt
+          cspell:companies/companies.txt
+          cspell:cpp/cpp.txt
+          cspell:csharp/csharp.txt
+          cspell:css/css.txt
+          cspell:django/django.txt
+          cspell:dotnet/dotnet.txt
+          cspell:elixir/elixir.txt
+          cspell:en_GB/src/wordsEnGb.txt
+          cspell:filetypes/filetypes.txt
+          cspell:fonts/fonts.txt
+          cspell:fullstack/fullstack.txt
+          cspell:golang/go.txt
+          cspell:haskell/haskell.txt
+          cspell:html/html.txt
+          cspell:java/java.txt
+          cspell:latex/latex.txt
+          cspell:lua/lua.txt
+          cspell:node/node.txt
+          cspell:npm/npm.txt
+          cspell:php/php.txt
+          cspell:python/python.txt
+          cspell:ruby/ruby.txt
+          cspell:rust/rust.txt
+          cspell:scala/scala.txt
+      check_file_names:
+        description: 'Spell check file paths'
+        required: false
+        type: boolean
+      config:
+        description: 'Spelling configuration directory'
+        required: false
+        type: string
+        default: ".github/actions/spelling"
+      debug:
+        description: 'Debug'
+        required: false
+        type: boolean
+      dictionary_source_prefixes:
+        description: 'JSON map of prefixes for dictionary urls'
+        required: false
+        type: string
+        default: '{"cspell": "https://raw.githubusercontent.com/check-spelling/cspell-dicts/HEAD/dictionaries/"}'
+      dictionary_url:
+        description: "Location of dictionary (if you aren't providing one in your repository)"
+        required: false
+        type: string
+        default: 'https://raw.githubusercontent.com/check-spelling/check-spelling/dictionary-$DICTIONARY_VERSION/dict.txt'
+      dictionary_version:
+        description: 'Version of the dictionary (only used if the url includes $DICTIONARY_VERSION)'
+        required: false
+        type: string
+        default: "20200211"
+      experimental_apply_changes_via_bot:
+        description: '(Experimental) Allow users to quote-reply to the bot comment to update the PR'
+        required: false
+        type: boolean
+      experimental_parallel_jobs:
+        description: 'Number of CPUs available for running checks'
+        required: false
+        type: number
+        default: 2
+      experimental_path:
+        description: 'Directory root to check for spelling (note that bucket/project/config are independent of this)'
+        required: false
+        type: string
+        default: '.'
+      extra_dictionaries:
+        description: 'Space delimited list of URLs (or `prefix:`+path) to additional word lists'
+        required: false
+        type: string
+      largest_file:
+        description: 'File size limit'
+        required: false
+        type: number
+        default: 1048576
+      longest_word:
+        description: 'Longest word'
+        required: false
+        type: number
+      only_check_changed_files:
+        description: 'If set, only check files changed since the last push'
+        required: false
+        type: boolean
+      shortest_word:
+        description: 'Shortest word'
+        required: false
+        type: number
+        default: 3
+      unknown_word_limit:
+        description: 'Only report an unknown word this many times'
+        required: false
+        type: number
+        default: 5
+
+    outputs:
+      artifact_name:
+        description: "Name of uploaded artifact containing internal state directory"
+        value: ${{ jobs.spelling.artifact_name }}
+      internal_state_directory:
+        description: "Internal state directory for use by comment workflow"
+        value: ${{ jobs.spelling.internal_state_directory }}
+      merge_failed:
+        description: "If a synthetic merge couldn't be generated"
+        value: ${{ jobs.spelling.checkout-merge.status == 'failed' }}
+
+jobs:
+  spelling:
+    name: Spell checking
+    outputs:
+      internal_state_directory: ${{ steps.spelling.outputs.internal_state_directory }}
+      artifact_name: ${{ steps.artifact-name.outputs.name }}
+    runs-on: ubuntu-latest
+    if: "contains(github.event_name, 'pull_request') || github.event_name == 'push'"
+    concurrency:
+      group: spelling-${{ github.event.pull_request.number || github.ref }}
+      # note: If you use only_check_changed_files, you do not want cancel-in-progress
+      cancel-in-progress: true
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    - name: checkout-merge
+      if: "contains(github.event_name, 'pull_request')"
+      uses: check-spelling/checkout-merge@v0.0.0
+    - name: check-spelling
+      if: env.MERGE_FAILED != '1'
+      id: spelling
+      uses: check-spelling/check-spelling@prerelease
+      with:
+        anonymize_secpoll_source: ${{ inputs.anonymize_secpoll_source }}
+        check_extra_dictionaries: ${{ inputs.check_extra_dictionaries }}
+        check_file_names: ${{ inputs.check_file_names }}
+        config: ${{ inputs.config }}
+        debug: ${{ inputs.debug }}
+        dictionary_source_prefixes: ${{ inputs.dictionary_source_prefixes }}
+        dictionary_url: ${{ inputs.dictionary_url }}
+        dictionary_version: ${{ inputs.dictionary_version }}
+        experimental_apply_changes_via_bot: ${{ inputs.experimental_apply_changes_via_bot }}
+        experimental_path: ${{ inputs.experimental_path }}
+        extra_dictionaries: ${{ inputs.extra_dictionaries }}
+        largest_file: ${{ inputs.largest_file }}
+        longest_word: ${{ inputs.longest_word }}
+        only_check_changed_files: ${{ inputs.only_check_changed_files }}
+        post_comment: 0
+        shortest_word: ${{ inputs.shortest_word }}
+        suppress_push_for_open_pull_request: 1
+        unknown_word_limit: ${{ inputs.unknown_word_limit }}
+    - name: artifact-name
+      id: artifact-name
+      if: failure() && steps.spelling.outputs.internal_state_directory
+      shell: bash
+      env:
+        input_artifact: ${{ inputs.artifact_name }}
+        calculated_artifiact: "check-spelling-comment-${{ github.run_id }}"
+      run: echo "::set-output name=name::${input_artifact:-$calculated_artifiact}"
+    - name: store-comment
+      if: failure() && steps.spelling.outputs.internal_state_directory
+      uses: actions/upload-artifact@v2
+      with:
+        retention-days: 1
+        name: ${{ steps.artifact-name.outputs.name }}
+        path: |
+          ${{ steps.spelling.outputs.internal_state_directory }}
