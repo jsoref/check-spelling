@@ -31,7 +31,7 @@ jobs:
     - name: checkout
       uses: actions/checkout@v2
     - name: check-spelling
-      uses: check-spelling/check-spelling@prerelease
+      uses: check-spelling/check-spelling@reusable
       with:
         debug: ${{ inputs.debug }}
         experimental_apply_changes_via_bot: 1

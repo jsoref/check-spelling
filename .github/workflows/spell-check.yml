@@ -148,7 +148,7 @@ jobs:
     - name: check-spelling
       if: env.MERGE_FAILED != '1'
       id: spelling
-      uses: check-spelling/check-spelling@prerelease
+      uses: check-spelling/check-spelling@reusable
       with:
         anonymize_secpoll_source: ${{ inputs.anonymize_secpoll_source }}
         check_extra_dictionaries: ${{ inputs.check_extra_dictionaries }}

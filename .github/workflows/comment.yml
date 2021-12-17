@@ -50,7 +50,7 @@ jobs:
         name: ${{ steps.artifact-name.outputs.name }}
         path: /tmp/data
     - name: comment
-      uses: check-spelling/check-spelling@prerelease
+      uses: check-spelling/check-spelling@reusable
       with:
         custom_task: comment
         debug: ${{ inputs.debug }}
