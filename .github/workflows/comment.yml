@@ -56,7 +56,7 @@ jobs:
         path: /tmp/data
     - name: comment
       timeout-minutes: ${{ inputs.timeout_minutes }}
-      uses: check-spelling/check-spelling@reusable
+      uses: jsoref/check-spelling@reusable
       with:
         custom_task: comment
         debug: ${{ inputs.debug }}

@@ -154,7 +154,7 @@ jobs:
       if: env.MERGE_FAILED != '1'
       id: spelling
       timeout-minutes: ${{ inputs.timeout_minutes }}
-      uses: check-spelling/check-spelling@reusable
+      uses: jsoref/check-spelling@reusable
       with:
         anonymize_secpoll_source: ${{ inputs.anonymize_secpoll_source }}
         check_extra_dictionaries: ${{ inputs.check_extra_dictionaries }}
