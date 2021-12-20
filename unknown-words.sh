@@ -426,6 +426,14 @@ handle_comment() {
   trigger_node=$(jq -r '.comment.node_id // empty' "$GITHUB_EVENT_PATH")
   collapse_comment $trigger_node $bot_comment_node_id
 
+  # $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs
+  # | jq -r '.check_runs[] |'\
+  # ' select(.conclusion=="failure") | select(.app.slug=="github-actions") | select(.name=="Spell checking") |'\
+  # '.url'
+
+  # ' "\(.conclusion) \(.output.summary) \(.check_suite.id)"'
+
+  # PATCH $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/check-runs/{check_run_id}
   pr_number=$(jq -r '.issue.number' "$GITHUB_EVENT_PATH")
   pr_path_escaped=$(echo "$GITHUB_REPOSITORY/pull/$pr_number" | perl -pne 's{/}{\%2F}g')
   pr_query=$(echo '{
