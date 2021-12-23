@@ -23,6 +23,11 @@ on:
         description: 'Suffix for report title (useful if you are using a matrix strategy or are using experimental_path)'
         required: false
         type: string
+      timeout_minutes:
+        description: 'Timeout (minutes)'
+        required: false
+        type: number
+        default: 360
 
 jobs:
   comment:
@@ -50,6 +55,7 @@ jobs:
         name: ${{ steps.artifact-name.outputs.name }}
         path: /tmp/data
     - name: comment
+      timeout-minutes: ${{ inputs.timeout_minutes }}
       uses: check-spelling/check-spelling@reusable
       with:
         custom_task: comment

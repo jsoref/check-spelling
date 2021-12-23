@@ -110,6 +110,11 @@ on:
         required: false
         type: number
         default: 3
+      timeout_minutes:
+        description: 'Timeout (minutes)'
+        required: false
+        type: number
+        default: 360
       unknown_word_limit:
         description: 'Only report an unknown word this many times'
         required: false
@@ -148,6 +153,7 @@ jobs:
     - name: check-spelling
       if: env.MERGE_FAILED != '1'
       id: spelling
+      timeout-minutes: ${{ inputs.timeout_minutes }}
       uses: check-spelling/check-spelling@reusable
       with:
         anonymize_secpoll_source: ${{ inputs.anonymize_secpoll_source }}
