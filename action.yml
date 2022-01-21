@@ -167,6 +167,14 @@ inputs:
     description: 'Suppress failure code exit code -- it will be available via outputs.result_code'
     required: false
     default: ''
+  previous_comment_ref:
+    description: 'Path to file containing previous comment reference to hide'
+    required: false
+    default: ''
+  new_comment_ref:
+    description: 'Path to file to store latest comment reference so a future run can hide it'
+    required: false
+    default: ''
 
 outputs:
   unknown_words:
