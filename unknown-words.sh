@@ -442,6 +442,7 @@ handle_comment() {
     confused_comment "$trigger_comment_url" "Failed to generate commit"
   git push request "HEAD:$pull_request_ref" ||
     confused_comment "$trigger_comment_url" "Failed to push to $pull_request_repo"
+  echo "PR_HEAD_SHA_NEW=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
   react "$trigger_comment_url" 'eyes' > /dev/null
   react "$comment_url" 'rocket' > /dev/null
@@ -481,7 +482,17 @@ handle_comment() {
   echo "$OUTPUT" > "$BODY"
   body_to_payload "$BODY"
   COMMENTS_URL=$(jq -r '.issue.comments_url' "$GITHUB_EVENT_PATH")
-  comment "$COMMENTS_URL" "$PAYLOAD"
+  response=$(mktemp)
+  comment "$COMMENTS_URL" "$PAYLOAD" > $response || res=$?
+  if [ $res -eq 0 ]; then
+    echo "Comment posted to $(jq -r '.html_url // empty' $response)"
+    if [ -n "$INPUT_NEW_COMMENT_REF" ]; then
+      posted_comment_node_id="$(jq -r '.node_id // empty' "$response")"
+      if [ -n "$posted_comment_node_id" ]; then
+        echo "$posted_comment_node_id" > $INPUT_NEW_COMMENT_REF
+      fi
+    fi
+  fi
   echo "# end"
   quit 0
 }
