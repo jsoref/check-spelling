@@ -1271,11 +1271,13 @@ spelling_body() {
       output_warnings="$(echo "
         <details><summary>Warnings ($(grep -c ':' "$counter_summary_file"))</summary>
 
-        See [Warning descriptions](https://github.com/check-spelling/check-spelling/wiki/Warning-descriptions) for more information.
+        $details_note
 
         Warning | Count
         -|-
         $(cat "$counter_summary_file" | jq -r 'to_entries[] | "[\(.key)](https://github.com/check-spelling/check-spelling/wiki/Warning-descriptions#\(.key)) | \(.value)"' )
+
+        See [Warning descriptions](https://github.com/check-spelling/check-spelling/wiki/Warning-descriptions) for more information.
         </details>
         " | strip_lead)"
     fi
