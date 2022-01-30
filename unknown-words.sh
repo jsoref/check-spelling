@@ -1167,6 +1167,35 @@ remove_items() {
   fi
 }
 
+get_action_log() {
+  if [ -z "$action_log" ]; then
+    action_log="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+    run_info=$(mktemp)
+    if curl -s -H "$AUTHORIZATION_HEADER" "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > "$run_info" 2>/dev/null; then
+      jobs_url=$(jq -r '.jobs_url // empty' "$run_info")
+      if [ -n "$jobs_url" ]; then
+        jobs_info=$(mktemp)
+        if curl -s -H "$AUTHORIZATION_HEADER" "$jobs_url" > "$jobs_info" 2>/dev/null; then
+          job=$(mktemp)
+          jq -r '.jobs[] | select(.status=="in_progress" and .runner_name=="'"$RUNNER_NAME"'" and .run_attempt=='"${GITHUB_RUN_ATTEMPT:-1}"')' "$jobs_info" > "$job" 2>/dev/null
+          job_log=$(jq -r .html_url "$job")
+          if [ -n "$job_log" ]; then
+            step_info=$(mktemp)
+            jq -r '.steps[] | select(.status=="pending") // empty' "$job" > "$step_info" 2>/dev/null
+            if [ ! -s "$step_info" ]; then
+              jq -r '.steps[] | select(.status=="queued" and .name=="check-spelling")' "$job" > "$step_info" 2>/dev/null
+            fi
+            step_number=$(jq -s -r .[0].number "$step_info")
+            action_log="$job_log#step:$step_number:1"
+          fi
+        fi
+      fi
+    fi
+  fi
+  echo "$action_log"
+}
+
 spelling_warning() {
   OUTPUT="### :red_circle: $1
 "
@@ -1195,9 +1224,9 @@ spelling_body() {
   err="$2"
   case "$GITHUB_EVENT_NAME" in
     pull_request|pull_request_target)
-      details_note="See the [files]($(jq -r .pull_request.number "$GITHUB_EVENT_PATH")/files/) view or the [action log]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID) for details.";;
+      details_note="See the [files]($(jq -r .pull_request.number "$GITHUB_EVENT_PATH")/files/) view or the [action log]($(get_action_log)) for details.";;
     push)
-      details_note="See the [action log]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID) for details.";;
+      details_note="See the [action log]($(get_action_log)) for details.";;
     *)
       details_note=$(echo '<!-- If you can see this, please [file a bug](https://github.com/check-spelling/check-spelling/issues/new)
         referencing this comment url, as the code does not expect this to happen. -->' | strip_lead);;
