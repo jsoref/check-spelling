@@ -1333,6 +1333,10 @@ get_before() {
   fi
 }
 
+append_file_to_file_list() {
+  echo "$1" | tr "\n" "\0" >> "$file_list"
+}
+
 run_spell_check() {
   echo "::set-output name=internal_state_directory::$data_dir" >> $output_variables
 
@@ -1355,7 +1359,7 @@ run_spell_check() {
   if to_boolean "$INPUT_CHECK_FILE_NAMES"; then
     check_file_names="$spellchecker/paths-of-checked-files.txt"
     cat "$file_list" | tr "\0" "\n" > "$check_file_names"
-    echo "$check_file_names" | tr "\n" "\0" >> "$file_list"
+    append_file_to_file_list "$check_file_names"
   fi
   count=$(perl -e '$/="\0"; $count=0; while (<>) {s/\R//; $count++ if /./;}; print $count;' $file_list)
   echo "Checking $count files"
