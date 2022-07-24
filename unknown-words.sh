@@ -1354,6 +1354,10 @@ get_before() {
     elif [ -n "$GITHUB_BASE_REF" ]; then
       BEFORE=$GITHUB_BASE_REF
     fi
+    if [ -e .git/shallow ]; then
+      UNSHALLOW=--unshallow
+    fi
+    git fetch origin $UNSHALLOW "$BEFORE":refs/private/before "${GITHUB_HEAD_SHA:-$GITHUB_SHA}:refs/private/after" >/dev/null 2>/dev/null
   fi
 }
 
@@ -1361,11 +1365,18 @@ append_file_to_file_list() {
   echo "$1" | tr "\n" "\0" >> "$file_list"
 }
 
+append_commit_message_to_file_list() {
+  commit_message_file="$commit_messages/$1.message"
+  git log -1 --format='%B%n' "$1" > "$commit_message_file"
+  append_file_to_file_list "$commit_message_file"
+}
+
 run_spell_check() {
   echo "::set-output name=internal_state_directory::$data_dir" >> $output_variables
 
   begin_group 'Spell check files'
   synthetic_base="$(mktemp -d)/check-spelling/$GITHUB_REPOSITORY"
+  echo "^\Q$synthetic_base/\E" >> "$patterns"
   mkdir -p "$synthetic_base"
 
   file_list=$(mktemp)
@@ -1375,8 +1386,7 @@ run_spell_check() {
     fi
     if [ -n "$BEFORE" ]; then
       echo "Only checking files changed from $BEFORE" >&2
-      git fetch origin $BEFORE >/dev/null 2>/dev/null
-      git diff -z --name-only FETCH_HEAD..HEAD
+      git diff -z --name-only refs/private/before
     else
       INPUT_ONLY_CHECK_CHANGED_FILES=
       git 'ls-files' -z 2> /dev/null
@@ -1387,6 +1397,38 @@ run_spell_check() {
     check_file_names="$synthetic_base/paths-of-checked-files.txt"
     cat "$file_list" | tr "\0" "\n" > "$check_file_names"
     append_file_to_file_list "$check_file_names"
+  fi
+  if [ -n "$INPUT_CHECK_COMMIT_MESSAGES" ]; then
+    commit_messages="$synthetic_base/commits"
+    mkdir -p "$commit_messages"
+    if [ 1 = "$(echo "$INPUT_CHECK_COMMIT_MESSAGES" | perl -ne 'next unless /\b(?:)commits\b/; print 1')" ]; then
+      get_before
+      for commit_sha in $(git log --format='%H' refs/private/before..refs/private/after); do
+        append_commit_message_to_file_list "$commit_sha"
+      done
+      if [ 1 = "$(echo "$INPUT_CHECK_COMMIT_MESSAGES" | perl -ne 'next unless /\b(?:)commit\b/; print 1')" ]; then
+        # warning about duplicate flag
+        echo > /dev/null
+      fi
+    elif [ 1 = "$(echo "$INPUT_CHECK_COMMIT_MESSAGES" | perl -ne 'next unless /\b(?:)commit\b/; print 1')" ]; then
+      append_commit_message_to_file_list "${GITHUB_BASE_REF:-$GITHUB_REF}"
+    fi
+
+    pr_number=$(jq -r '.pull_request.number // empty' "$GITHUB_EVENT_PATH")
+    if [ -n "$pr_number" ]; then
+      pr_details_path="$synthetic_base/pull-request/$pr_number"
+      mkdir -p "$pr_details_path"
+      if [ 1 = "$(echo "$INPUT_CHECK_COMMIT_MESSAGES" | perl -ne 'next unless /\b(?:)summary\b/; print 1')" ]; then
+        pr_summary_file="$pr_details_path/summary.txt"
+        jq -r .pull_request.title "$GITHUB_EVENT_PATH" > "$pr_summary_file"
+        append_file_to_file_list "$pr_summary_file"
+      fi
+      if [ 1 = "$(echo "$INPUT_CHECK_COMMIT_MESSAGES" | perl -ne 'next unless /\b(?:)description\b/; print 1')" ]; then
+        pr_description_file="$pr_details_path/description.txt"
+        jq -r .pull_request.body "$GITHUB_EVENT_PATH" > "$pr_description_file"
+        append_file_to_file_list "$pr_description_file"
+      fi
+    fi
   fi
   count=$(perl -e '$/="\0"; $count=0; while (<>) {s/\R//; $count++ if /./;}; print $count;' $file_list)
   echo "Checking $count files"
