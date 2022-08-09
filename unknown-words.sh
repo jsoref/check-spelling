@@ -1505,6 +1505,57 @@ run_spell_check() {
   cat "$more_warnings" >> "$warning_output"
   rm "$more_warnings"
   WARNINGS_LIST="$warnings_list" perl -pi -e 'next if /\((?:$ENV{WARNINGS_LIST})\)$/; s{(^(?:.+):[\s]line\s(?:\d+),[\s]columns\s(?:\d+)-(?:\d+),)\sWarning(\s-\s.+\s\(.*\))}{$1 Error$2}' "$warning_output"
+  if to_boolean "$INPUT_UPLOAD_SARIF"; then
+    SARIF_FILE=$(mktemp_json)
+    echo UPLOAD_SARIF="$SARIF_FILE" >> "$GITHUB_ENV"
+    cat > $SARIF_FILE <<EOF
+{
+  "\$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "properties": {
+    "comment": "check-spelling test"
+  },
+  "runs": [
+    {
+      "tool": {
+      "driver": {
+        "name": "check-spelling",
+        "version": "$CHECK_SPELLING_VERSION",
+        "informationUri": "https://github.com/check-spelling/check-spelling",
+        "rules": [
+          {
+            "id": "unrecognized-spelling",
+            "name": "Unrecognized Spelling",
+            "helpUri": "https://github.com/check-spelling/check-spelling/wiki/Event-descriptions#unrecognized-spelling",
+            "shortDescription": {
+              "text": "unrecognized-spelling"
+            },
+            "fullDescription": {
+              "text": "Token is neither in the dictionary nor expected"
+            },
+            "help": {
+              "text": "?",
+              "markdown": "**Remediation (click \"Show more\" below)**:\n\n- Correct spelling or add to expect.txt\n\n"
+            },
+            "defaultConfiguration": {
+              "level": "error"
+            },
+            "properties": {
+              "precision": "high",
+              "problem.severity": "error",
+              "security-severity": "7.0",
+              "tags": [
+                "source-code",
+                "code-reviews"
+              ]
+            }
+          }
+        ]
+ } }, "results": [
+EOF
+    perl -ne 'next unless m{^(.+):(\d+):(\d+) \.\.\. (\d+),\s(Error|Warning|Notice)\s-\s(.+\s\((.+)\))$}; my ($file, $line, $column, $endColumn, $severity, $message, $code) = ($1, $2, $3, $4, $5, $6, $7); $message =~ s/([\\"])/\\$1/g; print $comma.qq<{"ruleId": "$code", "ruleIndex": 0,"message": { "text": "$message" }, "locations": [ { "physicalLocation": { "artifactLocation": { "uri": "$file", "uriBaseId": "%SRCROOT%" }, "region": { "startLine": $line, "startColumn": $column, "endColumn": $endColumn } } } ] }>; $comma=",";' "$warning_output" >> "$SARIF_FILE"
+    echo '] } ] }' >> "$SARIF_FILE"
+  fi
   cat "$warning_output"
   echo "::set-output name=warnings::$warning_output" >> $output_variables
   end_group

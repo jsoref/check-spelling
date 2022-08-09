@@ -247,6 +247,10 @@ inputs:
     description: 'ssh key to retrieve alternate engine'
     required: false
     default: ''
+  upload_sarif:
+    description: 'Publish Sarif report'
+    required: false
+    default: ''
 
 outputs:
   unknown_words:
@@ -334,6 +338,29 @@ runs:
         spellchecker=$(echo $spellchecker| perl -pe 's{/$}{}')
         stdbuf -i0 -o0 -e0 $spellchecker/unknown-words.sh
       shell: bash
+    - name: dump-sarif
+      id: dump-sarif
+      if: (success() || failure()) && env.UPLOAD_SARIF != ''
+      shell: bash
+      run: |
+        cat ${{ env.UPLOAD_SARIF }}
+    - name: artifact-sarif
+      id: artifact-sarif
+      if: (success() || failure()) && env.UPLOAD_SARIF != ''
+      uses: actions/upload-artifact@v3
+      with:
+        name: "check-spelling-sarif"
+        retention-days: 1
+        path: |
+          ${{ env.UPLOAD_SARIF }}
+    - name: upload-sarif
+      id: upload-sarif
+      if: always() && env.UPLOAD_SARIF != ''
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: ${{ env.UPLOAD_SARIF }}
+        category: check-spelling
+        checkout_path: ${{ inputs.experimental_path }}
     - name: store-comment
       if: (contains(github.event_name, 'pull_request') ||
           github.event_name == 'push') &&
