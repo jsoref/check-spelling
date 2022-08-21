@@ -2080,7 +2080,7 @@ grep_v_spellchecker() {
 }
 
 grep_v_string() {
-  perl -ne "next if m{$1}; print"
+  NEEDLE="$1" perl -ne "next if m{$ENV{NEEDLE}}; print"
 }
 
 compare_new_output() {
