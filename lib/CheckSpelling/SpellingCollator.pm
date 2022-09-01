@@ -172,7 +172,7 @@ sub main {
       my $reason=<SKIPPED>;
       close SKIPPED;
       chomp $reason;
-      push @delayed_warnings, "$file: line 1, columns 1-1, Warning - Skipping `$file` because $reason\n";
+      push @delayed_warnings, "$file:1:1 ... 1, Warning - Skipping `$file` because $reason\n";
       print SHOULD_EXCLUDE "$file\n";
       push @cleanup_directories, $directory;
       next;
@@ -202,7 +202,7 @@ sub main {
               $candidate_totals[$i] += $hits;
               if ($candidate_file_counts[$i]++ < 3) {
                 my $pattern = (split /\n/,$candidates[$i])[-1];
-                push @delayed_warnings, "$file: line $lines[$i], columns 1-1, Notice - Line would match `$pattern` (candidate-pattern)\n";
+                push @delayed_warnings, "$file:$lines[$i]:1 ... 1, Notice - Line matches candidate pattern `$pattern` (candidate-pattern)\n";
               }
             }
           }
@@ -217,7 +217,7 @@ sub main {
         # || ($unrecognized > $words / 2)
     ) {
       unless ($disable_noisy_file) {
-        push @delayed_warnings, "$file: line 1, columns 1-1, Warning - Skipping `$file` because there seems to be more noise ($unknown) than unique words ($unique) (total: $unrecognized / $words). (noisy-file)\n";
+        push @delayed_warnings, "$file:1:1 ... 1, Warning - Skipping `$file` because there seems to be more noise ($unknown) than unique words ($unique) (total: $unrecognized / $words). (noisy-file)\n";
         print SHOULD_EXCLUDE "$file\n";
         push @cleanup_directories, $directory;
         next;
@@ -295,15 +295,15 @@ sub main {
     open WARNINGS, '<:utf8', "$directory/warnings";
     for $warning (<WARNINGS>) {
       chomp $warning;
-      if ($warning =~ s/(line \d+) cols (\d+-\d+): '(.*)'/$1, columns $2, Warning - `$3` is not a recognized word. (unrecognized-spelling)/) {
+      if ($warning =~ s/:(\d+):(\d+ \.\.\. \d+): '(.*)'/:$1:$2, Warning - `$3` is not a recognized word. (unrecognized-spelling)/) {
         my ($line, $range, $item) = ($1, $2, $3);
         next if skip_item($item);
         my $seen_count = $seen{$item};
         if (defined $seen_count) {
           if (!defined $unknown_word_limit || ($seen_count++ < $unknown_word_limit)) {
-            print MORE_WARNINGS "$file: $warning\n"
+            print MORE_WARNINGS "$file$warning\n"
           } else {
-            $last_seen{$item} = "$file: $warning";
+            $last_seen{$item} = "$file$warning";
           }
           $seen{$item} = $seen_count;
           next;
@@ -312,7 +312,7 @@ sub main {
       } else {
         count_warning $warning;
       }
-      print WARNING_OUTPUT "$file: $warning\n";
+      print WARNING_OUTPUT "$file$warning\n";
     }
     close WARNINGS;
   }
