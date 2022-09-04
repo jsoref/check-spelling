@@ -2022,6 +2022,23 @@ minimize_comment_body() {
 
 post_commit_comment() {
   if [ -n "$OUTPUT" ]; then
+    if true; then
+      jobs_summary_link="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT"
+      step_summary_draft=$(mktemp)
+      echo "$OUTPUT" >> "$step_summary_draft"
+      if offer_quote_reply; then
+        quote_reply_insertion=$(mktemp)
+        (
+          if [ -n "$INPUT_REPORT_TITLE_SUFFIX" ]; then
+            apply_changes_suffix=" $INPUT_REPORT_TITLE_SUFFIX"
+          fi
+          echo
+          echo "To have the bot do this for you, comment with the following line:"
+          echo "@check-spelling-bot apply [changes]($jobs_summary_link)$apply_changes_suffix."
+        )>> "$step_summary_draft"
+      fi
+      cat "$step_summary_draft" >> "$GITHUB_STEP_SUMMARY"
+    fi
     if to_boolean "$INPUT_POST_COMMENT"; then
       echo "Preparing a comment for $GITHUB_EVENT_NAME"
       set_comments_url "$GITHUB_EVENT_NAME" "$GITHUB_EVENT_PATH" "$GITHUB_SHA"
