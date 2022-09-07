@@ -1585,34 +1585,49 @@ get_has_errors() {
   fi
 }
 
+get_step_number_and_job_log() {
+  if [ -z "$step_number" ] && [ -z "$job_log" ]; then
+    run_info=$(mktemp)
+    if call_curl "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > "$run_info" 2>/dev/null; then
+      jobs_url=$(jq -r '.jobs_url // empty' "$run_info")
+      if [ -n "$jobs_url" ]; then
+        jobs_info=$(mktemp)
+        if call_curl "$jobs_url" > "$jobs_info" 2>/dev/null; then
+          job=$(mktemp)
+          jq -r '.jobs[] | select(.status=="in_progress" and .runner_name=="'"$RUNNER_NAME"'" and .run_attempt=='"${GITHUB_RUN_ATTEMPT:-1}"')' "$jobs_info" > "$job" 2>/dev/null
+          job_log=$(jq -r .html_url "$job")
+          if [ -n "$job_log" ]; then
+            step_info=$(mktemp)
+            jq -r '.steps[] | select(.status=="pending") // empty' "$job" > "$step_info" 2>/dev/null
+            if [ ! -s "$step_info" ]; then
+              jq -r '.steps[] | select(.status=="queued" and .name=="check-spelling")' "$job" > "$step_info" 2>/dev/null
+            fi
+            step_number=$(jq -s -r .[0].number "$step_info")
+          fi
+        fi
+      fi
+    fi
+  fi
+  if [ -n "$step_number" ] && [ -n "$job_log" ]; then
+    echo "$step_number"
+    echo "$job_log"
+  fi
+}
+
 get_action_log() {
   if [ -z "$action_log" ]; then
     if [ -s "$action_log_ref" ]; then
-      action_log="$(cat $action_log_ref)"
+      action_log="$(cat "$action_log_ref")"
     else
       action_log=$(get_action_log_overview)
 
-      run_info=$(mktemp)
-      if call_curl "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > "$run_info" 2>/dev/null; then
-        jobs_url=$(jq -r '.jobs_url // empty' "$run_info")
-        if [ -n "$jobs_url" ]; then
-          jobs_info=$(mktemp)
-          if call_curl "$jobs_url" > "$jobs_info" 2>/dev/null; then
-            job=$(mktemp)
-            jq -r '.jobs[] | select(.status=="in_progress" and .runner_name=="'"$RUNNER_NAME"'" and .run_attempt=='"${GITHUB_RUN_ATTEMPT:-1}"')' "$jobs_info" > "$job" 2>/dev/null
-            job_log=$(jq -r .html_url "$job")
-            if [ -n "$job_log" ]; then
-              step_info=$(mktemp)
-              jq -r '.steps[] | select(.status=="pending") // empty' "$job" > "$step_info" 2>/dev/null
-              if [ ! -s "$step_info" ]; then
-                jq -r '.steps[] | select(.status=="queued" and .name=="check-spelling")' "$job" > "$step_info" 2>/dev/null
-              fi
-              step_number=$(jq -s -r .[0].number "$step_info")
-              action_log="$job_log#step:$step_number:1"
-            fi
-          fi
+      step_number_and_job_log="$(get_step_number_and_job_log)"
+      if [ $(echo "$step_number_and_job_log" | wc -l) -eq 2 ]; then
+        step_number=$(echo "$step_number_and_job_log" | head -1)
+        job_log=$(echo "$step_number_and_job_log" | tail -1)
+        if [ -n "$job_log" ] && [ -n "$step_number" ]; then
+          action_log="$job_log#step:$step_number:1"
         fi
-
       fi
       echo "$action_log" > "$action_log_ref"
     fi
