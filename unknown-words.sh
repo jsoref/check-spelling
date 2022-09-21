@@ -1734,7 +1734,10 @@ spelling_body() {
         <details><summary>Available dictionaries could cover words not in the dictionary</summary>
 
         $expect_details
-        $(cat "$extra_dictionaries_cover_entries_limited")
+
+        Dictionary | Entries | Covers
+        -|-|-
+        $(perl -pe 's/ \((\d+)\) covers (\d+) of them/|$1|$2|/' "$extra_dictionaries_cover_entries_limited")
 
         Consider adding them using$workflow_path_hint:
         $B yml
