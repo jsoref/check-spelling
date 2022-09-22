@@ -833,6 +833,7 @@ define_variables() {
   diff_output="$temp/output.diff"
   tokens_file="$data_dir/tokens.txt"
   action_log_ref="$data_dir/action_log_ref.txt"
+  action_log_file_name="$data_dir/action_log_file_name.txt"
   extra_dictionaries_json="$data_dir/suggested_dictionaries.json"
   output_variables=$(mktemp)
   instructions_preamble=$(mktemp)
@@ -1597,7 +1598,7 @@ get_has_errors() {
   fi
 }
 
-get_step_number_and_job_log() {
+get_job_info_and_step_info() {
   if [ -z "$step_number" ] && [ -z "$job_log" ]; then
     run_info=$(mktemp)
     if call_curl "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > "$run_info" 2>/dev/null; then
@@ -1608,11 +1609,13 @@ get_step_number_and_job_log() {
           job=$(mktemp)
           jq -r '.jobs[] | select(.status=="in_progress" and .runner_name=="'"$RUNNER_NAME"'" and .run_attempt=='"${GITHUB_RUN_ATTEMPT:-1}"')' "$jobs_info" > "$job" 2>/dev/null
           job_log=$(jq -r .html_url "$job")
+          job_name=$(jq -r .name "$job")
           if [ -n "$job_log" ]; then
             step_info=$(mktemp)
             jq -r '.steps[] | select(.status=="pending") // empty' "$job" > "$step_info" 2>/dev/null
             if [ ! -s "$step_info" ]; then
-              jq -r '.steps[] | select(.status=="queued" and .name=="check-spelling")' "$job" > "$step_info" 2>/dev/null
+              step_name='check-spelling'
+              jq -r '.steps[] | select(.status=="queued" and .name=="'"$step_name"'")' "$job" > "$step_info" 2>/dev/null
             fi
             step_number=$(jq -s -r .[0].number "$step_info")
           fi
@@ -1620,9 +1623,11 @@ get_step_number_and_job_log() {
       fi
     fi
   fi
-  if [ -n "$step_number" ] && [ -n "$job_log" ]; then
-    echo "$step_number"
+  if [ -n "$step_number" ] && [ -n "$job_log" ] && [ -n "$step_number" ] && [ -n ]; then
     echo "$job_log"
+    echo "$job_name"
+    echo "$step_number"
+    echo "$step_name"
   fi
 }
 
@@ -1633,12 +1638,15 @@ get_action_log() {
     else
       action_log=$(get_action_log_overview)
 
-      step_number_and_job_log="$(get_step_number_and_job_log)"
-      if [ $(echo "$step_number_and_job_log" | wc -l) -eq 2 ]; then
-        step_number=$(echo "$step_number_and_job_log" | head -1)
-        job_log=$(echo "$step_number_and_job_log" | tail -1)
-        if [ -n "$job_log" ] && [ -n "$step_number" ]; then
+      job_info_and_step_info="$(get_job_info_and_step_info)"
+      if [ $(echo "$job_info_and_step_info" | wc -l) -eq 4 ]; then
+        job_log=$(echo "$job_info_and_step_info" | head -1)
+        job_name=$(echo "$job_info_and_step_info" | head -2 | tail -1)
+        step_number=$(echo "$job_info_and_step_info" | head -3 | tail -1)
+        step_name=$(echo "$job_info_and_step_info" | head -4 | tail -1)
+        if [ -n "$job_log" ] && [ -n "$step_number" ] && [ -n "$job_name" ]; then
           action_log="$job_log#step:$step_number:1"
+          echo "$job_name/${step_number}_${step_name}.txt" > "$action_log_file_name"
         fi
       fi
       echo "$action_log" > "$action_log_ref"
