@@ -6,6 +6,7 @@ our $VERSION='0.1.0';
 use File::Basename;
 use Encode qw/decode_utf8 encode FB_DEFAULT/;
 use CheckSpelling::Util;
+use Cwd;
 
 use constant {
   NO_MATCHES => -1,
@@ -173,6 +174,10 @@ sub main {
       $name = <$source_link>;
       chomp $name;
       close $source_link;
+    } else {
+      my $error = $!;
+      my $dir = getcwd;
+      print STDERR "Could not open sourcelink for [.$name] from [$dir] $error\n";
     }
 
     my $uniq = $current->{'uniq'};
