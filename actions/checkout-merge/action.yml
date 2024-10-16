@@ -1,0 +1,40 @@
+name: 'Checkout Merge'
+description: 'Generate a merge commit'
+inputs:
+  base_ref:
+    description: |
+      This commit will be refetched (to give the merge the best chance of
+      succeeding) and used as the base for the merge.
+    default: ${{ github.event.pull_request.base.ref }}
+    required: false
+  head_ref:
+    description: |
+      This commit will be fetched and merged into the base commit.
+    default: ${{ github.event.pull_request.head.sha }}
+    required: false
+  path:
+    description: 'Relative path under $GITHUB_WORKSPACE to the repository'
+    default: "."
+    required: false
+  do_not_report:
+    description: 'Suppress reporting errors (consumers would report the message themselves)'
+    default: ''
+    required: false
+outputs:
+  message:
+    description: "User facing message about attempt to merge"
+    value: ${{ steps.action.outputs.message }}
+  status:
+    description: "Whether the merge succeeded"
+    value: ${{ steps.action.status }}
+runs:
+  using: composite
+  steps:
+  - name: Merge
+    id: action
+    uses: check-spelling/checkout-merge@v3
+    with:
+      base_ref: ${{ inputs.base_ref }}
+      do_not_report: ${{ inputs.do_not_report }}
+      head_ref: ${{ inputs.head_ref }}
+      path: ${{ inputs.path }}

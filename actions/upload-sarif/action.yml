@@ -1,0 +1,52 @@
+name: 'Code Scanning : Upload SARIF'
+description: 'Upload the analysis results'
+inputs:
+  sarif_file:
+    description: |
+      The SARIF file or directory of SARIF files to be uploaded to GitHub code scanning.
+      See https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/uploading-a-sarif-file-to-github#uploading-a-code-scanning-analysis-with-github-actions
+      for information on the maximum number of results and maximum file size supported by code scanning.
+    required: false
+    default: '../results'
+  checkout_path:
+    description: "The path at which the analyzed repository was checked out. Used to relativize any absolute paths in the uploaded SARIF file."
+    required: false
+    default: ${{ github.workspace }}
+  ref:
+    description: "The ref where results will be uploaded. If not provided, the Action will use the GITHUB_REF environment variable. If provided, the sha input must be provided as well. This input is ignored for pull requests from forks."
+    required: false
+  sha:
+    description: "The sha of the HEAD of the ref where results will be uploaded. If not provided, the Action will use the GITHUB_SHA environment variable. If provided, the ref input must be provided as well. This input is ignored for pull requests from forks."
+    required: false
+  token:
+    description: "GitHub token to use for authenticating with this instance of GitHub. The token must be the built-in GitHub Actions token, and the workflow must have the `security-events: write` permission. Most of the time it is advisable to avoid specifying this input so that the workflow falls back to using the default value."
+    required: false
+    default: ${{ github.token }}
+  matrix:
+    default: ${{ toJson(matrix) }}
+  category:
+    description: String used by Code Scanning for matching the analyses
+    required: false
+  wait-for-processing:
+    description: If true, the Action will wait for the uploaded SARIF to be processed before completing.
+    required: true
+    default: "true"
+outputs:
+  sarif-id:
+    description: The ID of the uploaded SARIF file.
+    value: ${{ steps.action.outputs.ref.sarif-id }}
+runs:
+  using: "composite"
+  steps:
+  - name: Upload SARIF
+    id: action
+    uses: github/codeql-action/upload-sarif@v3
+    with:
+      category: ${{ inputs.category }}
+      checkout_path: ${{ inputs.checkout_path }}
+      matrix: ${{ inputs.matrix }}
+      ref: ${{ inputs.ref }}
+      sarif_file: ${{ inputs.sarif_file }}
+      sha: ${{ inputs.sha }}
+      token: ${{ inputs.token }}
+      wait-for-processing: ${{ inputs.wait-for-processing }}
