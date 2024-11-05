@@ -557,6 +557,7 @@ runs:
         retention-days: 1
         path: ${{ env.UPLOAD_SARIF }}
     - name: upload-sarif
+      continue-on-error: true
       id: upload-sarif
       if: (success() || (failure() && env.MERGE_FAILED != '1')) && env.UPLOAD_SARIF_LIMITED != '' && !steps.save-sha.outputs.skip-upload
       uses: ./.git/check-spelling-actions/upload-sarif
